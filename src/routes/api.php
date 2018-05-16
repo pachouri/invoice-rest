@@ -355,7 +355,166 @@
         $conn = null;
       }
     });
+	
+//Please do not touch above lines, learning code.
+	 /**
+     * This method create  record for client.
+     * @param string $quote - The text of post
+     * @param int $id - The user id
+     */
+    $app->post('/clients', function (Request $request, Response $response) {
+      // Gets quote and user id
+     
+	        $ext_client_id=$request->getParam('ext_client_id');
+			$client_name=$request->getParam('client_name');
+            $client_address_1=$request->getParam('client_address_1');
+            $client_address_2=$request->getParam('client_address_2');
+            $client_city=$request->getParam('client_city');
+            $client_state=$request->getParam('client_state');
+            $client_zip=$request->getParam('client_zip');
+            $client_country=$request->getParam('client_country');
+            $client_phone=$request->getParam('client_phone');
+            $client_fax=$request->getParam('client_fax');
+            $client_mobile=$request->getParam('client_mobile');
+            $client_email=$request->getParam('client_email');
+            $client_web=$request->getParam('client_web');
+            $client_vat_id=$request->getParam('client_vat_id');
+            $client_tax_code=$request->getParam('client_tax_code');
+            $client_active=1;
 
+      // Gets the database connection
+      $conn = PDOConnection::getConnection();
+
+      try {
+        // Gets the user into the database
+  			$sql = "SELECT * FROM ext_client_map where 	ext_client_id=:ext_client_id";
+  			$stmt = $conn->prepare($sql);
+  			$stmt->bindParam(":ext_client_id", $ext_client_id);
+  			$stmt->execute();
+  			$query = $stmt->fetchObject();
+
+  			// If user exist
+  			if ($query) {
+                $data['status'] = "Client Aleady Exist";
+        } else {
+			
+          // Insert Data for Client Who is not exist:
+     
+          $sql = "INSERT INTO ip_clients(client_name, client_address_1, client_address_2,client_city,client_state,client_zip,client_phone,client_fax,client_mobile,client_email,client_web,client_vat_id,client_tax_code,client_active) VALUES(:client_name, :client_address_1,:client_address_2,:client_city,:client_state,:client_zip,:client_phone,:client_fax,:client_mobile,:client_email,:client_web,:client_vat_id,:client_tax_code,:client_active)";
+			  $stmt = $conn->prepare($sql);
+			  $stmt->bindParam(":client_name", $client_name);
+			  $stmt->bindParam(":client_address_1", $client_address_1);
+			  $stmt->bindParam(":client_address_2", $client_address_2);
+			  $stmt->bindParam(":client_city", $client_city);
+			  $stmt->bindParam(":client_state", $client_state);
+			  $stmt->bindParam(":client_zip", $client_zip);
+			  $stmt->bindParam(":client_phone", $client_phone);
+			  $stmt->bindParam(":client_fax", $client_fax);
+			  $stmt->bindParam(":client_mobile", $client_mobile); 
+			  $stmt->bindParam(":client_email", $client_email);
+			  $stmt->bindParam(":client_web", $client_web);
+			  $stmt->bindParam(":client_vat_id", $client_vat_id);
+			  $stmt->bindParam(":client_tax_code", $client_tax_code);
+			  $stmt->bindParam(":client_active", $client_active);
+		  
+          $result = $stmt->execute();
+		  if($result){
+			 //selecting MAX ID to Map External System Client ID and Invoice Plane Client ID
+			$sql = "SELECT MAX(client_id) FROM ip_clients ";
+            $stmt = $conn->query($sql);
+            $maxid = $stmt->fetchAll();
+		    $this['logger']->info("Record Created For This ID".$maxid[0]['MAX(client_id)']);
+			//Creating Record for Map External System Client ID and Invoice Plane Client ID
+			$sql = "INSERT INTO ext_client_map(ext_client_id, client_id) VALUES(:ext_client_id, :client_id)";
+            $stmt = $conn->prepare($sql);
+            $stmt->bindParam(":ext_client_id", $ext_client_id);
+            $stmt->bindParam(":client_id", $maxid[0]['MAX(client_id)']);
+            $result = $stmt->execute();
+		   }
+          $data['status'] = $result;
+		 }
+        // Return the result
+        $response = $response->withHeader('Content-Type','application/json');
+        $response = $response->withStatus(200);
+        $response = $response->withJson($data);
+        return $response;
+      } catch (PDOException $e) {
+        $this['logger']->error("DataBase Error.<br/>" . $e->getMessage());
+      } catch (Exception $e) {
+        $this['logger']->error("General Error.<br/>" . $e->getMessage());
+      } finally {
+        // Destroy the database connection
+        $conn = null;
+      }
+      });
+	  
+	  
+     /**
+     * This method create  record for product family
+     * @param string $quote - The text of post
+     * @param int $id - The user id
+     */
+    $app->post('/families', function (Request $request, Response $response) {
+      // Gets quote and user id
+     
+	        $ext_family_id=$request->getParam('ext_family_id');
+			$family_name=$request->getParam('family_name');
+            
+           
+
+      // Gets the database connection
+      $conn = PDOConnection::getConnection();
+
+      try {
+        // Gets the user into the database
+  			$sql = "SELECT * FROM ext_family_map where 	ext_family_id=:ext_family_id";
+  			$stmt = $conn->prepare($sql);
+  			$stmt->bindParam(":ext_family_id", $ext_family_id);
+  			$stmt->execute();
+  			$query = $stmt->fetchObject();
+
+  			// If user exist
+  			if ($query) {
+                $data['status'] = "Families Aleady Exist";
+        } else {
+			
+          // Insert Data for Client Who is not exist:
+     
+          $sql = "INSERT INTO  ip_families(family_name)VALUES(:family_name)";
+			  $stmt = $conn->prepare($sql);
+			  $stmt->bindParam(":family_name", $family_name);
+			  
+		  
+          $result = $stmt->execute();
+		  if($result){
+			 //selecting MAX ID to Map External System Families ID and Invoice Plane families ID
+			$sql = "SELECT MAX(family_id) FROM ip_families ";
+            $stmt = $conn->query($sql);
+            $maxid = $stmt->fetchAll();
+		    $this['logger']->info("Record Created For This ID".$maxid[0]['MAX(family_id)']);
+			//Creating Record for Map External System Client ID and Invoice Plane Client ID
+			$sql = "INSERT INTO ext_family_map(ext_family_id, family_id) VALUES(:ext_family_id, :family_id)";
+            $stmt = $conn->prepare($sql);
+            $stmt->bindParam(":ext_family_id", $ext_family_id);
+            $stmt->bindParam(":family_id", $maxid[0]['MAX(family_id)']);
+            $result = $stmt->execute();
+		   }
+          $data['status'] = $result;
+		 }
+        // Return the result
+        $response = $response->withHeader('Content-Type','application/json');
+        $response = $response->withStatus(200);
+        $response = $response->withJson($data);
+        return $response;
+      } catch (PDOException $e) {
+        $this['logger']->error("DataBase Error.<br/>" . $e->getMessage());
+      } catch (Exception $e) {
+        $this['logger']->error("General Error.<br/>" . $e->getMessage());
+      } finally {
+        // Destroy the database connection
+        $conn = null;
+      }
+      });
   });
 
 ?>

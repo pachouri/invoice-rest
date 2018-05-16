@@ -4,7 +4,7 @@
   define("DB_HOST", "localhost");
   define("DB_USER", "root");
   define("DB_PASS", "");
-  define("DB_NAME", "NETWORK");
+  define("DB_NAME", "invoicep");
 
   // Secret for JWT Auth
   define("SECRET", "secret");
