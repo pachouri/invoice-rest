@@ -47,6 +47,8 @@
      * <b>post: </b> http://localhost/api/public/webresources/mobile_app/ping
      */
     $app->get('/ping', function (Request $request, Response $response) {
+		 $test = LookupData::getLookupValue("ext_tax_map","tax_id","ext_tax_id","11403");
+		 $this['logger']->info("Test".$test);
       return "pong";
     });
 
@@ -448,12 +450,7 @@
       }
       });
 	  
-	  
-     /**
-     * This method create  record for product family
-     * @param string $quote - The text of post
-     * @param int $id - The user id
-     */
+	
     $app->post('/families', function (Request $request, Response $response) {
       // Gets quote and user id
      
@@ -515,6 +512,310 @@
         $conn = null;
       }
       });
-  });
+	  
+	  /**
+     * This method create  record for product 
+     * @param string $quote - The text of post
+     * @param int $id - The user id
+     */
+    $app->post('/products', function (Request $request, Response $response) {
+      // Gets quote and user id
+     
+	        $ext_product_id=$request->getParam('ext_product_id');
+			$this['logger']->info("EXT Product ID".$ext_product_id);
+			$product_sku=$request->getParam('product_sku');
+			$family_id=$request->getParam('family_id');//change required
+			$product_name=$request->getParam('product_name');
+			$product_description=$request->getParam('product_description');
+			if($product_description === NULL){
+				$product_description=" ";
+			}
+			$product_price=$request->getParam('product_price');
+			$purchase_price=$request->getParam('purchase_price');
+			$provider_name=$request->getParam('provider_name');
+			$tax_rate_id=$request->getParam('tax_rate_id');//change required
+			$unit_id=$request->getParam('unit_id');//change required
+			$product_tariff=$request->getParam('product_tariff');
+            
+    
 
+      // Gets the database connection
+      $conn = PDOConnection::getConnection();
+
+      try {
+        // Gets the user into the database
+  			$sql = "SELECT * FROM ext_product_map where ext_product_id=:ext_product_id";
+  			$stmt = $conn->prepare($sql);
+  			$stmt->bindParam(":ext_product_id", $ext_product_id);
+  			$stmt->execute();
+  			$query = $stmt->fetchObject();
+  			// If user exist
+  			if ($query) {
+                $data['status'] = "Product Aleady Exist";
+            } else {	
+          // Insert Data for Client Who is not exist:
+          $sql = "INSERT INTO   ip_products(product_sku,family_id,product_name,product_description,product_price,purchase_price,provider_name,tax_rate_id,unit_id,product_tariff)VALUES(:product_sku,:family_id,:product_name,:product_description,:product_price,:purchase_price,:provider_name,:tax_rate_id,:unit_id,:product_tariff)";
+			  $stmt = $conn->prepare($sql);
+			  $stmt->bindParam(":product_sku", $product_sku);
+			  $family_id_ip=LookupData::getLookupValue("ext_family_map","family_id","ext_family_id",$family_id);
+			  $stmt->bindParam(":family_id",  $family_id_ip);
+			  $stmt->bindParam(":product_name", $product_name);
+			  $stmt->bindParam(":product_description", $product_description);
+			  $stmt->bindParam(":product_price", $product_price);
+			  $stmt->bindParam(":purchase_price", $purchase_price);
+			  $stmt->bindParam(":provider_name", $provider_name);
+			  $tax_rate_id_ip=LookupData::getLookupValue("ext_tax_map","tax_id","ext_tax_id",$tax_rate_id);
+		      $stmt->bindParam(":tax_rate_id", $tax_rate_id_ip);
+			  $unit_id_ip=LookupData::getLookupValue("ext_unit_map","unit_id","ext_unit_id",$unit_id);
+		      $stmt->bindParam(":unit_id", $unit_id_ip);
+			  $stmt->bindParam(":product_tariff", $product_tariff);
+			   
+          $result = $stmt->execute();
+		  if($result){
+			 //selecting MAX ID to Map External System Families ID and Invoice Plane families ID
+			$sql = "SELECT MAX(product_id) FROM ip_products ";
+            $stmt = $conn->query($sql);
+            $maxid = $stmt->fetchAll();
+		    $this['logger']->info("Record Created For This ID".$maxid[0]['MAX(product_id)']);
+			//Creating Record for Map External System Client ID and Invoice Plane Client ID
+			$sql = "INSERT INTO ext_product_map(ext_product_id, product_id) VALUES(:ext_product_id, :product_id)";
+            $stmt = $conn->prepare($sql);
+            $stmt->bindParam(":ext_product_id", $ext_product_id);
+            $stmt->bindParam(":product_id", $maxid[0]['MAX(product_id)']);
+            $result = $stmt->execute();
+		   }
+          $data['status'] = $result;
+		 }
+        // Return the result
+        $response = $response->withHeader('Content-Type','application/json');
+        $response = $response->withStatus(200);
+        $response = $response->withJson($data);
+        return $response;
+      } catch (PDOException $e) {
+        $this['logger']->error("DataBase Error.<br/>" . $e->getMessage());
+      } catch (Exception $e) {
+        $this['logger']->error("General Error.<br/>" . $e->getMessage());
+      } finally {
+        // Destroy the database connection
+        $conn = null;
+      }
+      });
+	  //Taxs sync
+	  // It will sync all tax rate
+	  
+	  $app->post('/taxrates', function (Request $request, Response $response) {
+      // Gets quote and user id
+     
+	        $ext_tax_id=$request->getParam('ext_tax_id');
+			$tax_rate_name=$request->getParam('tax_rate_name');
+			$tax_rate_percent=$request->getParam('tax_rate_percent');
+            
+           
+
+      // Gets the database connection
+      $conn = PDOConnection::getConnection();
+
+      try {
+        // Gets the user into the database
+  			$sql = "SELECT * FROM ext_tax_map where ext_tax_id=:ext_tax_id";
+  			$stmt = $conn->prepare($sql);
+  			$stmt->bindParam(":ext_tax_id", $ext_tax_id);
+  			$stmt->execute();
+  			$query = $stmt->fetchObject();
+
+  			// If user exist
+  			if ($query) {
+                $data['status'] = "Tax Rate Aleady Exist";
+        } else {
+			
+          // Insert Data for Client Who is not exist:
+     
+          $sql = "INSERT INTO  ip_tax_rates(tax_rate_name,tax_rate_percent)VALUES(:tax_rate_name,:tax_rate_percent)";
+			  $stmt = $conn->prepare($sql);
+			  $stmt->bindParam(":tax_rate_name", $tax_rate_name);
+			  $stmt->bindParam(":tax_rate_percent", $tax_rate_percent);
+          $result = $stmt->execute();
+		  if($result){
+			 //selecting MAX ID to Map External System Families ID and Invoice Plane families ID
+			$sql = "SELECT MAX(tax_rate_id) FROM ip_tax_rates ";
+            $stmt = $conn->query($sql);
+            $maxid = $stmt->fetchAll();
+		    $this['logger']->info("Record Created For This ID".$maxid[0]['MAX(tax_rate_id)']);
+			//Creating Record for Map External System Client ID and Invoice Plane Client ID
+			$sql = "INSERT INTO ext_tax_map(ext_tax_id, tax_id) VALUES(:ext_tax_id, :tax_id)";
+            $stmt = $conn->prepare($sql);
+            $stmt->bindParam(":ext_tax_id", $ext_tax_id);
+            $stmt->bindParam(":tax_id", $maxid[0]['MAX(tax_rate_id)']);
+            $result = $stmt->execute();
+		   }
+          $data['status'] = $result;
+		 }
+        // Return the result
+        $response = $response->withHeader('Content-Type','application/json');
+        $response = $response->withStatus(200);
+        $response = $response->withJson($data);
+        return $response;
+      } catch (PDOException $e) {
+        $this['logger']->error("DataBase Error.<br/>" . $e->getMessage());
+      } catch (Exception $e) {
+        $this['logger']->error("General Error.<br/>" . $e->getMessage());
+      } finally {
+        // Destroy the database connection
+        $conn = null;
+      }
+      });
+	  
+	  
+	  
+	   //It will Sync Unit
+	  // It will sync all tax rate
+	  
+	  $app->post('/units', function (Request $request, Response $response) {
+      // Gets quote and user id
+     
+	        $ext_unit_id=$request->getParam('ext_unit_id');
+			$unit_name=$request->getParam('unit_name');
+		
+           
+
+      // Gets the database connection
+      $conn = PDOConnection::getConnection();
+
+      try {
+        // Gets the user into the database
+  			$sql = "SELECT * FROM ext_unit_map where ext_unit_id=:ext_unit_id";
+  			$stmt = $conn->prepare($sql);
+  			$stmt->bindParam(":ext_unit_id", $ext_unit_id);
+  			$stmt->execute();
+  			$query = $stmt->fetchObject();
+
+  			// If user exist
+  			if ($query) {
+                $data['status'] = "Unit Aleady Exist";
+        } else {
+			
+          // Insert Data for Client Who is not exist:
+     
+          $sql = "INSERT INTO  ip_units(unit_name)VALUES(:unit_name)";
+			  $stmt = $conn->prepare($sql);
+			  $stmt->bindParam(":unit_name", $unit_name);
+          $result = $stmt->execute();
+		  if($result){
+			 //selecting MAX ID to Map External System Families ID and Invoice Plane families ID
+			$sql = "SELECT MAX(unit_id) FROM ip_units ";
+            $stmt = $conn->query($sql);
+            $maxid = $stmt->fetchAll();
+		    $this['logger']->info("Record Created For This ID".$maxid[0]['MAX(unit_id)']);
+			//Creating Record for Map External System Client ID and Invoice Plane Client ID
+			$sql = "INSERT INTO ext_unit_map(ext_unit_id, unit_id) VALUES(:ext_unit_id, :unit_id)";
+            $stmt = $conn->prepare($sql);
+            $stmt->bindParam(":ext_unit_id", $ext_unit_id);
+            $stmt->bindParam(":unit_id", $maxid[0]['MAX(unit_id)']);
+            $result = $stmt->execute();
+		   }
+          $data['status'] = $result;
+		 }
+        // Return the result
+        $response = $response->withHeader('Content-Type','application/json');
+        $response = $response->withStatus(200);
+        $response = $response->withJson($data);
+        return $response;
+      } catch (PDOException $e) {
+        $this['logger']->error("DataBase Error.<br/>" . $e->getMessage());
+      } catch (Exception $e) {
+        $this['logger']->error("General Error.<br/>" . $e->getMessage());
+      } finally {
+        // Destroy the database connection
+        $conn = null;
+      }
+      });
+	  
+	  
+	   /**
+     * This method list the users for likes
+     * @param int $id - quote id
+     */
+    $app->get('/invoices/{id}', function (Request $request, Response $response) {
+      // Gets quote
+      $id = $request->getAttribute('id');
+
+      // Gets the database connection
+      $conn = PDOConnection::getConnection();
+
+      try {
+        // Gets the posts into the database
+        $sql = "SELECT ip_invoices.invoice_id,ip_invoices.user_id,ext_client_map.ext_client_id, ip_invoices.invoice_date_created, ip_invoices.invoice_time_created,	ip_invoices.invoice_number,ip_invoice_amounts.invoice_item_subtotal,ip_invoice_amounts.invoice_item_tax_total, ip_invoice_amounts.invoice_total  FROM ip_invoices , ip_invoice_amounts, ext_client_map WHERE ip_invoices.invoice_id =ip_invoice_amounts.invoice_id and ip_invoices.invoice_id=:id and  ext_client_map.client_id = ip_invoices.client_id";
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':id', $id);
+        $stmt->execute();
+        $data = $stmt->fetchAll();
+		
+		$sqlItem = "select ip_invoice_items.item_quantity, ip_invoice_items.item_price,ip_invoice_items.item_price,  ip_invoice_items.item_discount_amount,  ext_product_map.ext_product_id, ext_tax_map.ext_tax_id
+                   from ip_invoice_items , ext_product_map , ext_tax_map
+                   where 
+                   ip_invoice_items.invoice_id=:id
+                  and  ext_product_map.product_id = ip_invoice_items.item_product_id
+                  and  ext_tax_map.tax_id = ip_invoice_items.item_tax_rate_id";
+        $stmtItem = $conn->prepare($sqlItem);
+        $stmtItem->bindParam(':id', $id);
+        $stmtItem->execute();
+        $items = $stmtItem->fetchAll();
+       
+        // Return a list
+        $response = $response->withHeader('Content-Type','application/json');
+        $response = $response->withStatus(200);
+        $response = $response->withJson(array(
+		   
+            "invoice_id"=> $data[0]['invoice_id'],
+            "user_id" => $data[0]['user_id'],
+            "ext_client_id" => $data[0]['ext_client_id'],
+            "invoice_date_created" => $data[0]['invoice_date_created'],
+			"invoice_time_created"=>$data[0]['invoice_time_created'],
+			"invoice_item_subtotal"=>$data[0]['invoice_item_subtotal'],
+			"invoice_item_tax_total"=>$data[0]['invoice_item_tax_total'],
+			"invoice_total"=>$data[0]['invoice_total'],
+            "invoice_number"=>$data[0]['invoice_number'],
+            "items" => $items
+         ));
+		//$this['logger']->info($data);
+        return $response;
+      } catch (PDOException $e) {
+        $this['logger']->error("DataBase Error.<br/>" . $e->getMessage());
+      } catch (Exception $e) {
+        $this['logger']->error("General Error.<br/>" . $e->getMessage());
+      } finally {
+        // Destroy the database connection
+        $conn = null;
+      }
+    });
+	
+	 $app->get('/payments/{id}', function (Request $request, Response $response) {
+      // Gets quote
+      $id = $request->getAttribute('id');
+      // Gets the database connection
+      $conn = PDOConnection::getConnection();
+      try {
+        // Gets the posts into the database
+        $sql = "Select ip_payments.payment_id, ip_payments.invoice_id ,ip_payments.payment_date, ip_payments.payment_amount, ip_invoices.invoice_number  from ip_payments , ip_invoices where ip_payments.payment_id=:id and  ip_payments.invoice_id  = ip_invoices.invoice_id;";
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':id', $id);
+        $stmt->execute();
+        $data = $stmt->fetchAll();
+        // Return a list
+        $response = $response->withHeader('Content-Type','application/json');
+        $response = $response->withStatus(200);
+        $response = $response->withJson($data);
+        return $response;
+      } catch (PDOException $e) {
+        $this['logger']->error("DataBase Error.<br/>" . $e->getMessage());
+      } catch (Exception $e) {
+        $this['logger']->error("General Error.<br/>" . $e->getMessage());
+      } finally {
+        // Destroy the database connection
+        $conn = null;
+      }
+    });
+
+  });
+ 
 ?>
