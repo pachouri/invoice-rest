@@ -750,12 +750,11 @@
         $stmt->execute();
         $data = $stmt->fetchAll();
 		
-		$sqlItem = "select ip_invoice_items.item_quantity, ip_invoice_items.item_price,ip_invoice_items.item_price,  ip_invoice_items.item_discount_amount,  ext_product_map.ext_product_id, ext_tax_map.ext_tax_id
-                   from ip_invoice_items , ext_product_map , ext_tax_map
-                   where 
-                   ip_invoice_items.invoice_id=:id
-                  and  ext_product_map.product_id = ip_invoice_items.item_product_id
-                  and  ext_tax_map.tax_id = ip_invoice_items.item_tax_rate_id";
+		$sqlItem = "select ip_invoice_items.item_quantity, ip_invoice_items.item_price,ip_invoice_items.item_price, ip_invoice_items.item_discount_amount, ext_product_map.ext_product_id, ext_tax_map.ext_tax_id ,ext_unit_map.ext_unit_id from ip_invoice_items , ext_product_map , ext_tax_map ,ext_unit_map where 
+		ip_invoice_items.invoice_id=:id 
+		and ext_product_map.product_id = ip_invoice_items.item_product_id 
+		and ext_tax_map.tax_id = ip_invoice_items.item_tax_rate_id 
+		and ext_unit_map.unit_id = ip_invoice_items.item_product_unit_id";
         $stmtItem = $conn->prepare($sqlItem);
         $stmtItem->bindParam(':id', $id);
         $stmtItem->execute();
